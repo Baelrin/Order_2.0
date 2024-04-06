@@ -13,8 +13,13 @@ from dotenv import load_dotenv
 load_dotenv("token.env")
 
 
-# Read the configuration file
 def read_config():
+    """
+    Reads and returns the configuration from the 'config.json' file.
+
+    :return: The JSON object containing the configuration.
+    :raises FileNotFoundError: If the configuration file does not exist.
+    """
     try:
         with open("config.json") as f:
             return json.load(f)
@@ -25,7 +30,6 @@ def read_config():
 
 config = read_config()
 
-# Variables
 TOKEN = os.getenv("TOKEN")
 ADMIN_ROLE_ID = config["ADMIN_ROLE_ID"]
 OLD_ROLE_ID = config["OLD_ROLE_ID"]
@@ -36,24 +40,34 @@ TIMEZONE = config["TIMEZONE"]
 PREFIX = config["PREFIX"]
 LOG_FILE = config["LOG_FILE"]
 
-# Logger
 logging.basicConfig(filename=LOG_FILE, level=logging.INFO)
 
-# Intents
 intents = discord.Intents.all()
 
-# Bot
 bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
 
-# Get list of members with OLD_ROLE
 async def get_members_with_old_role(guild):
+    """
+    Fetches all members with the OLD_ROLE from the guild.
+
+    :param guild: The Discord guild to search within.
+    :return: A list of members who have the OLD_ROLE or an empty list if the role does not exist.
+    """
     old_role = guild.get_role(OLD_ROLE_ID)
     return old_role.members if old_role else []
 
 
-# Change role and send message in channel
 async def change_role_and_send_message(member, old_role, new_role, channel):
+    """
+    Removes the old role from a member, assigns them a new role, and sends a randomized message in a specified channel.
+
+    :param member: The member to update roles for.
+    :param old_role: The role to remove from the member.
+    :param new_role: The role to add to the member.
+    :param channel: The channel to send the message in.
+    :raises discord.Forbidden: If the bot does not have permission to change roles or send messages.
+    """
     try:
         await member.remove_roles(old_role)
         await member.add_roles(new_role)
@@ -66,21 +80,38 @@ async def change_role_and_send_message(member, old_role, new_role, channel):
         raise
 
 
-# Check for admin role
 def check_admin_role(ctx):
+    """
+    Checks if the command sender has the admin role.
+
+    :param ctx: The context of the command.
+    :return: True if the sender has the admin role, False otherwise.
+    """
     admin_role = ctx.guild.get_role(ADMIN_ROLE_ID)
     return admin_role in ctx.author.roles if admin_role else False
 
 
-# Check member's join time
 def check_join_time(member, threshold):
+    """
+    Checks if a member's join time exceeds the specified threshold.
+
+    :param member: The member to check.
+    :param threshold: The join time threshold in seconds.
+    :return: True if the member's join time exceeds the threshold, False otherwise.
+    """
     join_time = member.joined_at.astimezone(pytz.timezone(TIMEZONE))
     current_time = datetime.datetime.now(pytz.timezone(TIMEZONE))
     return (current_time - join_time).total_seconds() > threshold
 
 
-# Command check
 async def handle_command(ctx, threshold: int = JOIN_TIME_THRESHOLD):
+    """
+    Handles the custom bot command by checking for the admin role, searching for members with the OLD_ROLE,
+    and updating their roles if their join time exceeds the specified threshold.
+
+    :param ctx: The context of the command.
+    :param threshold: The join time threshold in seconds.
+    """
     if not check_admin_role(ctx):
         await ctx.send("У вас нет прав на выполнение этой команды.")
         return
@@ -116,7 +147,6 @@ async def c(ctx, threshold: int = JOIN_TIME_THRESHOLD):
     await handle_command(ctx, threshold)
 
 
-# Event on_ready
 @bot.event
 async def on_ready():
     if bot.user is not None:
@@ -125,8 +155,9 @@ async def on_ready():
         logging.info("User is None")
 
 
-# Run bot
 try:
+    if TOKEN is None:
+        raise ValueError("Token is None")
     bot.run(TOKEN)
 except discord.LoginFailure as e:
     logging.error(f"Failed to run bot: {e}")
