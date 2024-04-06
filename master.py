@@ -13,6 +13,10 @@ load_dotenv("token.env")
 
 
 def read_config():
+    """
+    Reads the configuration file and loads it as a JSON object.
+    If the file is not found, logs an error and raises a FileNotFoundError.
+    """
     try:
         with open("config.json") as f:
             return json.load(f)
@@ -41,21 +45,35 @@ bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 
 
 async def get_members_with_old_role(guild):
+    """
+    Retrieves members with a specified old role within a guild.
+    If the role is not found, returns an empty list.
+    """
     old_role = guild.get_role(OLD_ROLE_ID)
     return old_role.members if old_role else []
 
 
 async def send_message(channel, message):
+    """
+    Sends a message to a specified channel and then sleeps for 1 second.
+    """
     await channel.send(message)
     await asyncio.sleep(1)
 
 
 async def send_messages(channel, messages):
+    """
+    Concurrently sends multiple messages to a specified channel.
+    """
     tasks = [send_message(channel, message) for message in messages]
     await asyncio.gather(*tasks)
 
 
 async def change_role_and_send_message(member, old_role, new_role, channel):
+    """
+    Changes the role of a member from old_role to new_role and sends a congratulations message.
+    Logs an error if the operation is forbidden.
+    """
     try:
         await member.remove_roles(old_role)
         await member.add_roles(new_role)
@@ -68,17 +86,29 @@ async def change_role_and_send_message(member, old_role, new_role, channel):
 
 
 def check_admin_role(ctx):
+    """
+    Checks if the author of the context has the admin role.
+    Returns True if the admin role is present, else False.
+    """
     admin_role = ctx.guild.get_role(ADMIN_ROLE_ID)
     return admin_role in ctx.author.roles if admin_role else False
 
 
 def check_join_time(member, threshold):
+    """
+    Checks if a member's join time exceeds a specified threshold.
+    Returns True if the condition is met, else False.
+    """
     join_time = member.joined_at.astimezone(pytz.timezone(TIMEZONE))
     current_time = datetime.datetime.now(pytz.timezone(TIMEZONE))
     return (current_time - join_time).total_seconds() > threshold
 
 
 async def handle_command(ctx, threshold: int = JOIN_TIME_THRESHOLD):
+    """
+    Handles a command to change roles based on join time and admin role check.
+    Sends appropriate feedback messages upon success or failure.
+    """
     if not check_admin_role(ctx):
         await ctx.send("У вас нет прав на выполнение этой команды.")
         return
@@ -106,16 +136,26 @@ async def handle_command(ctx, threshold: int = JOIN_TIME_THRESHOLD):
 
 @bot.command()
 async def C(ctx, threshold: int = JOIN_TIME_THRESHOLD):
+    """
+    Command handler for uppercase 'C'. Delegates to handle_command.
+    """
     await handle_command(ctx, threshold)
 
 
 @bot.command()
 async def c(ctx, threshold: int = JOIN_TIME_THRESHOLD):
+    """
+    Command handler for lowercase 'c'. Delegates to handle_command.
+    """
     await handle_command(ctx, threshold)
 
 
 @bot.event
 async def on_ready():
+    """
+    Event handler for when the bot is ready.
+    Logs the bot's name or an error if the bot details are missing.
+    """
     if bot.user is not None:
         logging.info(f"Logged in as {bot.user.name}")
     else:
